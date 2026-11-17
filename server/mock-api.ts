@@ -1,7 +1,11 @@
 import type { Plugin } from "vite";
 import { DEFAULT_LIMIT, type Item } from "../src/api";
 
-const TOTAL = 100;
+const ALL_ITEMS: Item[] = Array.from({ length: 100 }, (_, id) => ({
+  id,
+  title: `アイテム #${id}`,
+}));
+
 // ローディング状態を目で確認できるよう、通信遅延を模している
 const DELAY_MS = 800;
 
@@ -16,11 +20,7 @@ export function mockApi(): Plugin {
 
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
 
-        const length = Math.max(0, Math.min(limit, TOTAL - offset));
-        const items: Item[] = Array.from({ length }, (_, i) => {
-          const id = offset + i;
-          return { id, title: `アイテム #${id}` };
-        });
+        const items = ALL_ITEMS.slice(offset, offset + limit);
 
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(items));
