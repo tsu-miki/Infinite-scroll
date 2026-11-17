@@ -3,16 +3,16 @@ export type Item = {
   title: string;
 };
 
-export const DEFAULT_VOLUME = 10;
+export const DEFAULT_LIMIT = 10;
 
 export async function fetchItems(
   offset: number,
-  volume: number = DEFAULT_VOLUME,
+  limit: number = DEFAULT_LIMIT,
   signal?: AbortSignal,
 ): Promise<Item[]> {
   const params = new URLSearchParams({
     offset: String(offset),
-    volume: String(volume),
+    limit: String(limit),
   });
   const res = await fetch(`/api/items?${params}`, { signal });
   if (!res.ok) {
