@@ -4,20 +4,19 @@ export type Item = {
 };
 
 export const DEFAULT_VOLUME = 10;
-const TOTAL = 100;
-// ローディング状態を目で確認できるよう、通信遅延を模している
-const DELAY_MS = 800;
 
 export async function fetchItems(
   offset: number,
   volume: number = DEFAULT_VOLUME,
+  signal?: AbortSignal,
 ): Promise<Item[]> {
-  await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
-
-  const end = Math.min(offset + volume, TOTAL);
-  const items: Item[] = [];
-  for (let i = offset; i < end; i++) {
-    items.push({ id: i, title: `アイテム #${i}` });
+  const params = new URLSearchParams({
+    offset: String(offset),
+    volume: String(volume),
+  });
+  const res = await fetch(`/api/items?${params}`, { signal });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
   }
-  return items;
+  return res.json();
 }
