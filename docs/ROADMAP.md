@@ -21,7 +21,7 @@
 | React / Next.js | Lit / ブラウザ標準 |
 |---|---|
 | `useState` | `@state()` プロパティ（変更で再描画） |
-| `useEffect` | `updated()` / `connectedCallback()` などのライフサイクル |
+| `useEffect` + `fetch` + ローディング状態 | `@lit/task` の `Task` |
 | `router.push` | `history.pushState` / `history.replaceState` |
 | `router.push(..., { scroll: false })` | pushState はそもそもスクロールしない |
 | `scrollRestoration` | `history.scrollRestoration` + `history.state` |

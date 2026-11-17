@@ -1,7 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { customElement } from "lit/decorators.js";
 
-// アプリのルート要素。Step 0 では表示だけ。
 @customElement("app-root")
 export class AppRoot extends LitElement {
   static styles = css`
@@ -15,6 +14,6 @@ export class AppRoot extends LitElement {
   `;
 
   render() {
-    return html`<h1>無限スクロール with Lit</h1>`;
+    return html`<h1>無限スクロール</h1>`;
   }
 }
