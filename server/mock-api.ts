@@ -16,11 +16,11 @@ export function mockApi(): Plugin {
 
         await new Promise((resolve) => setTimeout(resolve, DELAY_MS));
 
-        const end = Math.min(offset + volume, TOTAL);
-        const items: Item[] = [];
-        for (let i = offset; i < end; i++) {
-          items.push({ id: i, title: `アイテム #${i}` });
-        }
+        const length = Math.max(0, Math.min(volume, TOTAL - offset));
+        const items: Item[] = Array.from({ length }, (_, i) => {
+          const id = offset + i;
+          return { id, title: `アイテム #${id}` };
+        });
 
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(items));
