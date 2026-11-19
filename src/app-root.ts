@@ -3,12 +3,12 @@ import { customElement, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { DEFAULT_LIMIT, fetchItems, type Item } from "./api";
 
-function readOffsetFromUrl(): number {
+function getUrlOffset(): number {
   const offset = Number(new URL(location.href).searchParams.get("offset"));
   return Number.isInteger(offset) && offset >= 0 ? offset : 0;
 }
 
-function writeOffsetToUrl(offset: number) {
+function setUrlOffset(offset: number) {
   const url = new URL(location.href);
   url.searchParams.set("offset", String(offset));
   history.replaceState(history.state, "", url);
@@ -30,7 +30,7 @@ export class AppRoot extends LitElement {
     }
   `;
 
-  @state() private offset = readOffsetFromUrl();
+  @state() private offset = getUrlOffset();
   @state() private items: Item[] = [];
 
   private itemsTask = new Task(this, {
@@ -48,7 +48,7 @@ export class AppRoot extends LitElement {
 
   private loadMore() {
     this.offset += DEFAULT_LIMIT;
-    writeOffsetToUrl(this.offset);
+    setUrlOffset(this.offset);
   }
 
   render() {
