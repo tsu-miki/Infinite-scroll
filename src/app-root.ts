@@ -3,6 +3,17 @@ import { customElement, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { DEFAULT_LIMIT, fetchItems, type Item } from "./api";
 
+function getUrlOffset(): number {
+  const offset = Number(new URL(location.href).searchParams.get("offset"));
+  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
+}
+
+function setUrlOffset(offset: number) {
+  const url = new URL(location.href);
+  url.searchParams.set("offset", String(offset));
+  history.replaceState(history.state, "", url);
+}
+
 @customElement("app-root")
 export class AppRoot extends LitElement {
   static styles = css`
@@ -19,11 +30,17 @@ export class AppRoot extends LitElement {
     }
   `;
 
-  @state() private offset = 0;
+  @state() private offset = getUrlOffset();
   @state() private items: Item[] = [];
 
   private itemsTask = new Task(this, {
-    task: ([offset], { signal }) => fetchItems(offset, DEFAULT_LIMIT, signal),
+    // リロード直後は表示済みが 0 件なので、先頭から offset のページの末尾までをまとめて取得する
+    task: ([offset], { signal }) => {
+      const from = this.items.length;
+      const to = offset + DEFAULT_LIMIT;
+      const limit = to - from;
+      return fetchItems(from, limit, signal);
+    },
     args: () => [this.offset] as const,
     onComplete: (newItems) => {
       this.items = [...this.items, ...newItems];
@@ -32,6 +49,7 @@ export class AppRoot extends LitElement {
 
   private loadMore() {
     this.offset += DEFAULT_LIMIT;
+    setUrlOffset(this.offset);
   }
 
   render() {
