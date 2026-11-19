@@ -38,7 +38,8 @@ export class AppRoot extends LitElement {
     task: ([offset], { signal }) => {
       const from = this.items.length;
       const to = offset + DEFAULT_LIMIT;
-      return fetchItems(from, to - from, signal);
+      const limit = to - from;
+      return fetchItems(from, limit, signal);
     },
     args: () => [this.offset] as const,
     onComplete: (newItems) => {
