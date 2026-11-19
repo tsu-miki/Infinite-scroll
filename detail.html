@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>詳細 | 無限スクロール</title>
+    <style>
+      body {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 16px;
+        font-family: sans-serif;
+      }
+    </style>
+    <script type="module">
+      const id = new URLSearchParams(location.search).get("id");
+      document.querySelector("h1").textContent = `アイテム #${id}`;
+    </script>
+  </head>
+  <body>
+    <h1></h1>
+    <button onclick="history.back()">戻る</button>
+  </body>
+</html>

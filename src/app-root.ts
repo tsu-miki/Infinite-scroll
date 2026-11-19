@@ -14,6 +14,14 @@ function setUrlOffset(offset: number) {
   history.replaceState(history.state, "", url);
 }
 
+function getHistoryScrollY(): number {
+  return history.state?.scrollY ?? 0;
+}
+
+function setHistoryScrollY(scrollY: number) {
+  history.replaceState({ ...history.state, scrollY }, "");
+}
+
 @customElement("app-root")
 export class AppRoot extends LitElement {
   static styles = css`
@@ -43,9 +51,40 @@ export class AppRoot extends LitElement {
     },
     args: () => [this.offset] as const,
     onComplete: (newItems) => {
+      const isFirstLoad = this.items.length === 0;
       this.items = [...this.items, ...newItems];
+      if (isFirstLoad) {
+        this.restoreScroll();
+      }
     },
   });
+
+  connectedCallback() {
+    super.connectedCallback();
+    // ブラウザ任せだと、データが届く前にスクロール位置を戻そうとして失敗するため自前で戻す
+    history.scrollRestoration = "manual";
+    window.addEventListener("scroll", this.handleScroll);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener("scroll", this.handleScroll);
+  }
+
+  private saveScrollTimer?: number;
+
+  // replaceState は短時間に何度も呼ぶとブラウザに制限されるため、スクロールが止まってから保存する
+  private handleScroll = () => {
+    clearTimeout(this.saveScrollTimer);
+    this.saveScrollTimer = window.setTimeout(() => {
+      setHistoryScrollY(window.scrollY);
+    }, 200);
+  };
+
+  private async restoreScroll() {
+    await this.updateComplete;
+    window.scrollTo(0, getHistoryScrollY());
+  }
 
   private loadMore() {
     this.offset += DEFAULT_LIMIT;
@@ -59,7 +98,10 @@ export class AppRoot extends LitElement {
     return html`
       <h1>無限スクロール</h1>
       <ul>
-        ${this.items.map((item) => html`<li>${item.title}</li>`)}
+        ${this.items.map(
+          (item) =>
+            html`<li><a href="/detail.html?id=${item.id}">${item.title}</a></li>`,
+        )}
       </ul>
       ${this.itemsTask.render({
         pending: () => html`<p>loading</p>`,
