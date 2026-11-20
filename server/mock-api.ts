@@ -1,7 +1,7 @@
 import type { Plugin } from "vite";
 import { DEFAULT_LIMIT, type Item } from "../src/api";
 
-const ALL_ITEMS: Item[] = Array.from({ length: 100 }, (_, id) => ({
+const ALL_ITEMS: Item[] = Array.from({ length: 10_000 }, (_, id) => ({
   id,
   title: `アイテム #${id}`,
 }));
