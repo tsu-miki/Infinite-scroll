@@ -9,7 +9,7 @@ function setHistoryScrollY(scrollY: number) {
 }
 
 export class ScrollRestorationController implements ReactiveController {
-  private saveTimer?: number;
+  private timeoutId?: number;
 
   constructor(private host: ReactiveControllerHost) {
     host.addController(this);
@@ -23,7 +23,7 @@ export class ScrollRestorationController implements ReactiveController {
 
   hostDisconnected() {
     window.removeEventListener("scroll", this.handleScroll);
-    clearTimeout(this.saveTimer);
+    clearTimeout(this.timeoutId);
   }
 
   async restore() {
@@ -33,8 +33,8 @@ export class ScrollRestorationController implements ReactiveController {
 
   // replaceState は短時間に何度も呼ぶとブラウザに制限されるため、スクロールが止まってから保存する
   private handleScroll = () => {
-    clearTimeout(this.saveTimer);
-    this.saveTimer = window.setTimeout(() => {
+    clearTimeout(this.timeoutId);
+    this.timeoutId = window.setTimeout(() => {
       setHistoryScrollY(window.scrollY);
     }, 200);
   };
