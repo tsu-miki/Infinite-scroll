@@ -3,4 +3,9 @@ import { mockApi } from "./server/mock-api";
 
 export default defineConfig({
   plugins: [mockApi()],
+  build: {
+    rolldownOptions: {
+      input: ["index.html", "detail.html"],
+    },
+  },
 });

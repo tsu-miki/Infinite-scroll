@@ -2,6 +2,7 @@ import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { DEFAULT_LIMIT, fetchItems, type Item } from "./api";
+import { ScrollRestorationController } from "./scroll-restoration-controller";
 
 function getUrlOffset(): number {
   const offset = Number(new URL(location.href).searchParams.get("offset"));
@@ -33,6 +34,8 @@ export class AppRoot extends LitElement {
   @state() private offset = getUrlOffset();
   @state() private items: Item[] = [];
 
+  private scrollRestoration = new ScrollRestorationController(this);
+
   private itemsTask = new Task(this, {
     // リロード直後は表示済みが 0 件なので、先頭から offset のページの末尾までをまとめて取得する
     task: ([offset], { signal }) => {
@@ -43,7 +46,11 @@ export class AppRoot extends LitElement {
     },
     args: () => [this.offset] as const,
     onComplete: (newItems) => {
+      const isFirstLoad = this.items.length === 0;
       this.items = [...this.items, ...newItems];
+      if (isFirstLoad) {
+        this.scrollRestoration.restore();
+      }
     },
   });
 
@@ -59,7 +66,10 @@ export class AppRoot extends LitElement {
     return html`
       <h1>無限スクロール</h1>
       <ul>
-        ${this.items.map((item) => html`<li>${item.title}</li>`)}
+        ${this.items.map(
+          (item) =>
+            html`<li><a href="/detail.html?id=${item.id}">${item.title}</a></li>`,
+        )}
       </ul>
       ${this.itemsTask.render({
         pending: () => html`<p>loading</p>`,
