@@ -2,7 +2,7 @@ import { LitElement, html, css, type PropertyValues } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { WindowVirtualizerController } from "@tanstack/lit-virtual";
-import { DEFAULT_LIMIT, fetchItems, type Item } from "./api";
+import { DEFAULT_LIMIT, fetchItems, postItem, type Item } from "./api";
 import { ScrollRestorationController } from "./scroll-restoration-controller";
 
 const ITEM_HEIGHT = 52;
@@ -119,6 +119,7 @@ export class AppRoot extends LitElement {
         error: (e) => html`<p>エラー: ${e}</p>`,
       })}
       <button ?disabled=${isLoading} @click=${this.loadMore}>もっと</button>
+      <button @click=${postItem}>新着を追加</button>
     `;
   }
 }
