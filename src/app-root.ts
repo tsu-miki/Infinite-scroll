@@ -69,14 +69,14 @@ export class AppRoot extends LitElement {
       return fetchItems(from, limit, signal);
     },
     args: () => [this.offset] as const,
-    onComplete: (fetchedItems) => {
+    onComplete: (newItems) => {
       const isFirstLoad = this.items.length === 0;
       // 取得の合間に先頭へ追加されると、表示済みの項目がもう一度返ってくるため取り除く
-      const existingIds = new Set(this.items.map((item) => item.id));
-      const itemsToAppend = fetchedItems.filter(
-        (item) => !existingIds.has(item.id),
+      const uniqueIds = new Set(this.items.map((item) => item.id));
+      const nonDuplicateItems = newItems.filter(
+        (item) => !uniqueIds.has(item.id),
       );
-      this.items = [...this.items, ...itemsToAppend];
+      this.items = [...this.items, ...nonDuplicateItems];
       setUrlOffset(this.offset);
       if (isFirstLoad) {
         this.scrollRestoration.restore();
