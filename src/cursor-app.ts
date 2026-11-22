@@ -8,6 +8,7 @@ import {
   type CursorRequest,
   type Item,
 } from "./api";
+import { AutoLoadController } from "./auto-load-controller";
 import { ScrollMarginController } from "./scroll-margin-controller";
 import { ScrollRestorationController } from "./scroll-restoration-controller";
 
@@ -66,6 +67,7 @@ export class CursorApp extends LitElement {
 
   @query("h1") private heading!: HTMLHeadingElement;
   @query("ul") private list!: HTMLUListElement;
+  @query(".load-more") private loadMoreButton!: HTMLButtonElement;
 
   private scrollRestoration = new ScrollRestorationController(this);
 
@@ -83,6 +85,11 @@ export class CursorApp extends LitElement {
     },
   });
 
+  private autoLoadController = new AutoLoadController(this, {
+    getTarget: () => this.loadMoreButton,
+    onVisible: () => this.loadMore(),
+  });
+
   private itemsTask = new Task(this, {
     task: ([request], { signal }) => fetchItemsByCursor(request, signal),
     args: () => [this.request] as const,
@@ -97,13 +104,15 @@ export class CursorApp extends LitElement {
       if (isFirstLoad) {
         this.scrollRestoration.restore();
       }
+      this.autoLoadController.recheck();
     },
   });
 
   private loadMore() {
-    if (this.nextCursor !== null) {
-      this.request = { type: "after", cursor: this.nextCursor };
+    if (this.itemsTask.status === TaskStatus.PENDING || this.nextCursor === null) {
+      return;
     }
+    this.request = { type: "after", cursor: this.nextCursor };
   }
 
   protected willUpdate(changed: PropertyValues) {
@@ -136,7 +145,11 @@ export class CursorApp extends LitElement {
         complete: () => (hasMore ? null : html`<p>これで全部です</p>`),
         error: (e) => html`<p>エラー: ${e}</p>`,
       })}
-      <button ?disabled=${isLoading || !hasMore} @click=${this.loadMore}>
+      <button
+        class="load-more"
+        ?disabled=${isLoading || !hasMore}
+        @click=${this.loadMore}
+      >
         もっと
       </button>
       <button @click=${postItem}>新着を追加</button>

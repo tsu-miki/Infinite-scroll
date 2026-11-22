@@ -3,6 +3,7 @@ import { customElement, query, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { WindowVirtualizerController } from "@tanstack/lit-virtual";
 import { DEFAULT_LIMIT, fetchItems, postItem, type Item } from "./api";
+import { AutoLoadController } from "./auto-load-controller";
 import { ScrollMarginController } from "./scroll-margin-controller";
 import { ScrollRestorationController } from "./scroll-restoration-controller";
 
@@ -53,6 +54,7 @@ export class AppRoot extends LitElement {
 
   @query("h1") private heading!: HTMLHeadingElement;
   @query("ul") private list!: HTMLUListElement;
+  @query(".load-more") private loadMoreButton!: HTMLButtonElement;
 
   private scrollRestoration = new ScrollRestorationController(this);
 
@@ -68,6 +70,11 @@ export class AppRoot extends LitElement {
     onChange: (scrollMargin) => {
       this.virtualizerController.setOptions({ scrollMargin });
     },
+  });
+
+  private autoLoadController = new AutoLoadController(this, {
+    getTarget: () => this.loadMoreButton,
+    onVisible: () => this.loadMore(),
   });
 
   private itemsTask = new Task(this, {
@@ -91,10 +98,15 @@ export class AppRoot extends LitElement {
       if (isFirstLoad) {
         this.scrollRestoration.restore();
       }
+      this.autoLoadController.recheck();
     },
   });
 
+  // 取得中に offset を進めると前のリクエストが中止され、そのページが抜け落ちるため何もしない
   private loadMore() {
+    if (this.itemsTask.status === TaskStatus.PENDING) {
+      return;
+    }
     this.offset += DEFAULT_LIMIT;
   }
 
@@ -105,7 +117,6 @@ export class AppRoot extends LitElement {
   }
 
   render() {
-    // 取得中に押されると前のリクエストが中止され、そのページが抜け落ちるため押せなくする
     const isLoading = this.itemsTask.status === TaskStatus.PENDING;
     const virtualizer = this.virtualizerController.getVirtualizer();
     const { scrollMargin } = virtualizer.options;
@@ -127,7 +138,13 @@ export class AppRoot extends LitElement {
         pending: () => html`<p>loading</p>`,
         error: (e) => html`<p>エラー: ${e}</p>`,
       })}
-      <button ?disabled=${isLoading} @click=${this.loadMore}>もっと</button>
+      <button
+        class="load-more"
+        ?disabled=${isLoading}
+        @click=${this.loadMore}
+      >
+        もっと
+      </button>
       <button @click=${postItem}>新着を追加</button>
     `;
   }
