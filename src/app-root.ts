@@ -1,16 +1,11 @@
-import { LitElement, html, type PropertyValues } from "lit";
+import { LitElement, html, css, type PropertyValues } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { WindowVirtualizerController } from "@tanstack/lit-virtual";
-import {
-  DEFAULT_LIMIT,
-  deleteFirstItem,
-  postItem,
-  type Item,
-} from "../shared/item";
-import { ITEM_HEIGHT, listStyles } from "../shared/list-styles";
-import { ScrollRestorationController } from "../shared/scroll-restoration-controller";
-import { fetchItems } from "./api";
+import { DEFAULT_LIMIT, fetchItems, postItem, type Item } from "./api";
+import { ScrollRestorationController } from "./scroll-restoration-controller";
+
+const ITEM_HEIGHT = 52;
 
 function getUrlOffset(): number {
   const offset = Number(new URL(location.href).searchParams.get("offset"));
@@ -23,9 +18,34 @@ function setUrlOffset(offset: number) {
   history.replaceState(history.state, "", url);
 }
 
-@customElement("offset-app")
-export class OffsetApp extends LitElement {
-  static styles = listStyles;
+@customElement("app-root")
+export class AppRoot extends LitElement {
+  static styles = css`
+    :host {
+      display: block;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+      font-family: sans-serif;
+    }
+    ul {
+      position: relative;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    li {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: ${ITEM_HEIGHT}px;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+    }
+  `;
 
   @state() private offset = getUrlOffset();
   @state() private items: Item[] = [];
@@ -85,7 +105,7 @@ export class OffsetApp extends LitElement {
     const { scrollMargin } = virtualizer.options;
 
     return html`
-      <h1>offset 方式</h1>
+      <h1>無限スクロール</h1>
       <ul style="height: ${virtualizer.getTotalSize()}px">
         ${virtualizer.getVirtualItems().map((virtualItem) => {
           const item = this.items[virtualItem.index];
@@ -103,7 +123,6 @@ export class OffsetApp extends LitElement {
       })}
       <button ?disabled=${isLoading} @click=${this.loadMore}>もっと</button>
       <button @click=${postItem}>新着を追加</button>
-      <button @click=${deleteFirstItem}>先頭を削除</button>
     `;
   }
 }
