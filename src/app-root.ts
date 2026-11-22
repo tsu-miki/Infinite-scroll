@@ -2,7 +2,7 @@ import { LitElement, html, css, type PropertyValues } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { WindowVirtualizerController } from "@tanstack/lit-virtual";
-import { DEFAULT_LIMIT, fetchItems, type Item } from "./api";
+import { DEFAULT_LIMIT, fetchItems, postItem, type Item } from "./api";
 import { ScrollRestorationController } from "./scroll-restoration-controller";
 
 const ITEM_HEIGHT = 52;
@@ -71,7 +71,12 @@ export class AppRoot extends LitElement {
     args: () => [this.offset] as const,
     onComplete: (newItems) => {
       const isFirstLoad = this.items.length === 0;
-      this.items = [...this.items, ...newItems];
+      // 取得の合間に先頭へ追加されると、表示済みの項目がもう一度返ってくるため取り除く
+      const uniqueIds = new Set(this.items.map((item) => item.id));
+      const nonDuplicateItems = newItems.filter(
+        (item) => !uniqueIds.has(item.id),
+      );
+      this.items = [...this.items, ...nonDuplicateItems];
       setUrlOffset(this.offset);
       if (isFirstLoad) {
         this.scrollRestoration.restore();
@@ -119,6 +124,7 @@ export class AppRoot extends LitElement {
         error: (e) => html`<p>エラー: ${e}</p>`,
       })}
       <button ?disabled=${isLoading} @click=${this.loadMore}>もっと</button>
+      <button @click=${postItem}>新着を追加</button>
     `;
   }
 }
