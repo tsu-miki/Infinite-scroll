@@ -54,7 +54,7 @@ export class AppRoot extends LitElement {
 
   private scrollRestoration = new ScrollRestorationController(this);
 
-  private virtualizer = new WindowVirtualizerController<HTMLLIElement>(this, {
+  private virtualizerController = new WindowVirtualizerController<HTMLLIElement>(this, {
     count: 0,
     estimateSize: () => ITEM_HEIGHT,
     overscan: 5,
@@ -72,6 +72,7 @@ export class AppRoot extends LitElement {
     onComplete: (newItems) => {
       const isFirstLoad = this.items.length === 0;
       this.items = [...this.items, ...newItems];
+      setUrlOffset(this.offset);
       if (isFirstLoad) {
         this.scrollRestoration.restore();
       }
@@ -80,25 +81,24 @@ export class AppRoot extends LitElement {
 
   private loadMore() {
     this.offset += DEFAULT_LIMIT;
-    setUrlOffset(this.offset);
   }
 
   protected willUpdate(changed: PropertyValues) {
     if (changed.has("items")) {
-      this.virtualizer.setOptions({ count: this.items.length });
+      this.virtualizerController.setOptions({ count: this.items.length });
     }
   }
 
   // 仮想スクロールはページ先頭からの位置で計算するため、一覧より上にある見出しの分を伝える
   protected firstUpdated() {
     const scrollMargin = this.list.getBoundingClientRect().top + window.scrollY;
-    this.virtualizer.setOptions({ scrollMargin });
+    this.virtualizerController.setOptions({ scrollMargin });
   }
 
   render() {
     // 取得中に押されると前のリクエストが中止され、そのページが抜け落ちるため押せなくする
     const isLoading = this.itemsTask.status === TaskStatus.PENDING;
-    const virtualizer = this.virtualizer.getVirtualizer();
+    const virtualizer = this.virtualizerController.getVirtualizer();
     const { scrollMargin } = virtualizer.options;
 
     return html`
