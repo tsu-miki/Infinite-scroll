@@ -4,9 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>無限スクロール</title>
-    <script type="module" src="/src/app-root.ts"></script>
+    <style>
+      body {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 16px;
+        font-family: sans-serif;
+      }
+      li {
+        margin-bottom: 16px;
+      }
+    </style>
   </head>
   <body>
-    <app-root></app-root>
+    <h1>無限スクロール</h1>
+    <ul>
+      <li>
+        <a href="/offset.html">offset 方式</a><br />
+        「何件目から」で取得し、重複は画面側で取り除く
+      </li>
+      <li>
+        <a href="/cursor.html">カーソル方式</a><br />
+        「どの項目の次から」で取得する
+      </li>
+    </ul>
   </body>
 </html>

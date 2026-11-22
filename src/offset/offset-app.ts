@@ -1,0 +1,109 @@
+import { LitElement, html, type PropertyValues } from "lit";
+import { customElement, query, state } from "lit/decorators.js";
+import { Task, TaskStatus } from "@lit/task";
+import { WindowVirtualizerController } from "@tanstack/lit-virtual";
+import {
+  DEFAULT_LIMIT,
+  deleteFirstItem,
+  postItem,
+  type Item,
+} from "../shared/item";
+import { ITEM_HEIGHT, listStyles } from "../shared/list-styles";
+import { ScrollRestorationController } from "../shared/scroll-restoration-controller";
+import { fetchItems } from "./api";
+
+function getUrlOffset(): number {
+  const offset = Number(new URL(location.href).searchParams.get("offset"));
+  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
+}
+
+function setUrlOffset(offset: number) {
+  const url = new URL(location.href);
+  url.searchParams.set("offset", String(offset));
+  history.replaceState(history.state, "", url);
+}
+
+@customElement("offset-app")
+export class OffsetApp extends LitElement {
+  static styles = listStyles;
+
+  @state() private offset = getUrlOffset();
+  @state() private items: Item[] = [];
+
+  @query("ul") private list!: HTMLUListElement;
+
+  private scrollRestoration = new ScrollRestorationController(this);
+
+  private virtualizerController = new WindowVirtualizerController<HTMLLIElement>(this, {
+    count: 0,
+    estimateSize: () => ITEM_HEIGHT,
+    overscan: 5,
+  });
+
+  private itemsTask = new Task(this, {
+    // リロード直後は表示済みが 0 件なので、先頭から offset のページの末尾までをまとめて取得する
+    task: ([offset], { signal }) => {
+      const from = this.items.length;
+      const to = offset + DEFAULT_LIMIT;
+      const limit = to - from;
+      return fetchItems(from, limit, signal);
+    },
+    args: () => [this.offset] as const,
+    onComplete: (newItems) => {
+      const isFirstLoad = this.items.length === 0;
+      // 取得の合間に先頭へ追加されると、表示済みの項目がもう一度返ってくるため取り除く
+      const loadedIds = new Set(this.items.map((item) => item.id));
+      const freshItems = newItems.filter((item) => !loadedIds.has(item.id));
+      this.items = [...this.items, ...freshItems];
+      setUrlOffset(this.offset);
+      if (isFirstLoad) {
+        this.scrollRestoration.restore();
+      }
+    },
+  });
+
+  private loadMore() {
+    this.offset += DEFAULT_LIMIT;
+  }
+
+  protected willUpdate(changed: PropertyValues) {
+    if (changed.has("items")) {
+      this.virtualizerController.setOptions({ count: this.items.length });
+    }
+  }
+
+  // 仮想スクロールはページ先頭からの位置で計算するため、一覧より上にある見出しの分を伝える
+  protected firstUpdated() {
+    const scrollMargin = this.list.getBoundingClientRect().top + window.scrollY;
+    this.virtualizerController.setOptions({ scrollMargin });
+  }
+
+  render() {
+    // 取得中に押されると前のリクエストが中止され、そのページが抜け落ちるため押せなくする
+    const isLoading = this.itemsTask.status === TaskStatus.PENDING;
+    const virtualizer = this.virtualizerController.getVirtualizer();
+    const { scrollMargin } = virtualizer.options;
+
+    return html`
+      <h1>offset 方式</h1>
+      <ul style="height: ${virtualizer.getTotalSize()}px">
+        ${virtualizer.getVirtualItems().map((virtualItem) => {
+          const item = this.items[virtualItem.index];
+          const y = virtualItem.start - scrollMargin;
+          return html`
+            <li style="transform: translateY(${y}px)">
+              <a href="/detail.html?id=${item.id}">${item.title}</a>
+            </li>
+          `;
+        })}
+      </ul>
+      ${this.itemsTask.render({
+        pending: () => html`<p>loading</p>`,
+        error: (e) => html`<p>エラー: ${e}</p>`,
+      })}
+      <button ?disabled=${isLoading} @click=${this.loadMore}>もっと</button>
+      <button @click=${postItem}>新着を追加</button>
+      <button @click=${deleteFirstItem}>先頭を削除</button>
+    `;
+  }
+}

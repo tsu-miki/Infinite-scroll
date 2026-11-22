@@ -1,54 +1,37 @@
-import { LitElement, html, css, type PropertyValues } from "lit";
+import { LitElement, html, type PropertyValues } from "lit";
 import { customElement, query, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { WindowVirtualizerController } from "@tanstack/lit-virtual";
-import { DEFAULT_LIMIT, fetchItems, postItem, type Item } from "./api";
-import { ScrollRestorationController } from "./scroll-restoration-controller";
+import { deleteFirstItem, postItem, type Item } from "../shared/item";
+import { ITEM_HEIGHT, listStyles } from "../shared/list-styles";
+import { ScrollRestorationController } from "../shared/scroll-restoration-controller";
+import { fetchItems, type ItemsRequest } from "./api";
 
-const ITEM_HEIGHT = 52;
-
-function getUrlOffset(): number {
-  const offset = Number(new URL(location.href).searchParams.get("offset"));
-  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
+function getUrlUntil(): number | null {
+  const value = new URL(location.href).searchParams.get("until");
+  const until = Number(value);
+  return value !== null && Number.isInteger(until) ? until : null;
 }
 
-function setUrlOffset(offset: number) {
+function setUrlUntil(until: number) {
   const url = new URL(location.href);
-  url.searchParams.set("offset", String(offset));
+  url.searchParams.set("until", String(until));
   history.replaceState(history.state, "", url);
 }
 
-@customElement("app-root")
-export class AppRoot extends LitElement {
-  static styles = css`
-    :host {
-      display: block;
-      max-width: 480px;
-      margin: 0 auto;
-      padding: 16px;
-      font-family: sans-serif;
-    }
-    ul {
-      position: relative;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-    li {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: ${ITEM_HEIGHT}px;
-      box-sizing: border-box;
-      display: flex;
-      align-items: center;
-      border-bottom: 1px solid #ddd;
-    }
-  `;
+// URL に「どの項目まで表示していたか」があれば、リロード直後は先頭からその項目までをまとめて取得する
+function getInitialRequest(): ItemsRequest {
+  const until = getUrlUntil();
+  return until === null ? { type: "first" } : { type: "until", cursor: until };
+}
 
-  @state() private offset = getUrlOffset();
+@customElement("cursor-app")
+export class CursorApp extends LitElement {
+  static styles = listStyles;
+
+  @state() private request = getInitialRequest();
   @state() private items: Item[] = [];
+  @state() private nextCursor: number | null = null;
 
   @query("ul") private list!: HTMLUListElement;
 
@@ -61,18 +44,16 @@ export class AppRoot extends LitElement {
   });
 
   private itemsTask = new Task(this, {
-    // リロード直後は表示済みが 0 件なので、先頭から offset のページの末尾までをまとめて取得する
-    task: ([offset], { signal }) => {
-      const from = this.items.length;
-      const to = offset + DEFAULT_LIMIT;
-      const limit = to - from;
-      return fetchItems(from, limit, signal);
-    },
-    args: () => [this.offset] as const,
-    onComplete: (newItems) => {
+    task: ([request], { signal }) => fetchItems(request, signal),
+    args: () => [this.request] as const,
+    onComplete: ({ items, nextCursor }) => {
       const isFirstLoad = this.items.length === 0;
-      this.items = [...this.items, ...newItems];
-      setUrlOffset(this.offset);
+      this.items = [...this.items, ...items];
+      this.nextCursor = nextCursor;
+      const lastItem = this.items.at(-1);
+      if (lastItem) {
+        setUrlUntil(lastItem.id);
+      }
       if (isFirstLoad) {
         this.scrollRestoration.restore();
       }
@@ -80,7 +61,9 @@ export class AppRoot extends LitElement {
   });
 
   private loadMore() {
-    this.offset += DEFAULT_LIMIT;
+    if (this.nextCursor !== null) {
+      this.request = { type: "after", cursor: this.nextCursor };
+    }
   }
 
   protected willUpdate(changed: PropertyValues) {
@@ -96,13 +79,13 @@ export class AppRoot extends LitElement {
   }
 
   render() {
-    // 取得中に押されると前のリクエストが中止され、そのページが抜け落ちるため押せなくする
     const isLoading = this.itemsTask.status === TaskStatus.PENDING;
+    const hasMore = this.nextCursor !== null;
     const virtualizer = this.virtualizerController.getVirtualizer();
     const { scrollMargin } = virtualizer.options;
 
     return html`
-      <h1>無限スクロール</h1>
+      <h1>カーソル方式</h1>
       <ul style="height: ${virtualizer.getTotalSize()}px">
         ${virtualizer.getVirtualItems().map((virtualItem) => {
           const item = this.items[virtualItem.index];
@@ -116,10 +99,14 @@ export class AppRoot extends LitElement {
       </ul>
       ${this.itemsTask.render({
         pending: () => html`<p>loading</p>`,
+        complete: () => (hasMore ? null : html`<p>これで全部です</p>`),
         error: (e) => html`<p>エラー: ${e}</p>`,
       })}
-      <button ?disabled=${isLoading} @click=${this.loadMore}>もっと</button>
+      <button ?disabled=${isLoading || !hasMore} @click=${this.loadMore}>
+        もっと
+      </button>
       <button @click=${postItem}>新着を追加</button>
+      <button @click=${deleteFirstItem}>先頭を削除</button>
     `;
   }
 }
