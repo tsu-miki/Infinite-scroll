@@ -3,6 +3,7 @@ import { customElement, query, state } from "lit/decorators.js";
 import { Task, TaskStatus } from "@lit/task";
 import { WindowVirtualizerController } from "@tanstack/lit-virtual";
 import { DEFAULT_LIMIT, fetchItems, postItem, type Item } from "./api";
+import { ScrollMarginController } from "./scroll-margin-controller";
 import { ScrollRestorationController } from "./scroll-restoration-controller";
 
 const ITEM_HEIGHT = 52;
@@ -50,6 +51,7 @@ export class AppRoot extends LitElement {
   @state() private offset = getUrlOffset();
   @state() private items: Item[] = [];
 
+  @query("h1") private heading!: HTMLHeadingElement;
   @query("ul") private list!: HTMLUListElement;
 
   private scrollRestoration = new ScrollRestorationController(this);
@@ -58,6 +60,14 @@ export class AppRoot extends LitElement {
     count: 0,
     estimateSize: () => ITEM_HEIGHT,
     overscan: 5,
+  });
+
+  private scrollMarginController = new ScrollMarginController(this, {
+    getHeading: () => this.heading,
+    getList: () => this.list,
+    onChange: (scrollMargin) => {
+      this.virtualizerController.setOptions({ scrollMargin });
+    },
   });
 
   private itemsTask = new Task(this, {
@@ -92,12 +102,6 @@ export class AppRoot extends LitElement {
     if (changed.has("items")) {
       this.virtualizerController.setOptions({ count: this.items.length });
     }
-  }
-
-  // 仮想スクロールはページ先頭からの位置で計算するため、一覧より上にある見出しの分を伝える
-  protected firstUpdated() {
-    const scrollMargin = this.list.getBoundingClientRect().top + window.scrollY;
-    this.virtualizerController.setOptions({ scrollMargin });
   }
 
   render() {
